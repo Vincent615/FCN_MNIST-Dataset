@@ -1,1 +1,1 @@
-# FCN_MNIST-Dataset
+# FCN_MNIST
