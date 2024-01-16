@@ -5,8 +5,8 @@ train.py is the code to train the model based on the MNIST Dataset.
 
 ## Prerequisites
 
-Pytorch
+- Pytorch
 
-Cuda
+- Cuda
 
 ## Acknowledgment
