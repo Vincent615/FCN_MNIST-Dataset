@@ -10,3 +10,5 @@ train.py is the code to train the model based on the MNIST Dataset.
 - Cuda
 
 ## Acknowledgment
+
+CMPUT 328, University of Alberta
