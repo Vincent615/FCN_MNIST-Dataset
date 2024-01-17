@@ -11,10 +11,12 @@ from FCN import FCN
 
 class Params:
     def __init__(self):
+        self.device = "cuda"
+        #self.device = "cpu"
+        self.loss_type = "ce"
+        #self.loss_type = "l2"
+        
         self.n_classes = 10
-        self.device = "cuda"  # "cpu"
-        self.loss_type = "ce"  # "l2" for L2 loss
-
         self.batch_size = 128
         self.n_epochs = 10
         self.lr = 1e-1
