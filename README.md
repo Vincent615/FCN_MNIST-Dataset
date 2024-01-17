@@ -6,9 +6,10 @@ train.py is the code to train and test the model based on the MNIST Dataset.
 ## Prerequisites
 
 - Pytorch
+- Torchvision
 - Cuda
 
 ## To-Do
-- [ ] Restructure the code
+- [x] Restructure the code
 
 ## Acknowledgment
