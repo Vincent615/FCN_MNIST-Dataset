@@ -1,54 +1,43 @@
-from FNN import FNN
+import torch
+from torch.utils.data import random_split
+import torchvision
+import torch.optim as optim
+import torch.nn.functional as F
 
 from tqdm import tqdm
 import timeit
 
-class Params:
-    class BatchSize:
-        train = 128
-        val = 128
-        test = 1000
+from FCN import FCN
 
+
+class Params:
     def __init__(self):
         self.device = 'gpu'
-        self.loss_type = "ce"
-        self.batch_size = Params.BatchSize()
+        self.loss_type = "ce"  # "l2" for L2 loss
+        self.n_classes = 10
+        self.batch_size = 128
         self.n_epochs = 10
-        self.learning_rate = 1e-1
+        self.lr = 1e-1
         self.momentum = 0.5
 
 
 def get_dataloaders(batch_size):
+    train_set = torchvision.datasets.MNIST('.', train=True, download=True,
+                            transform=torchvision.transforms.Compose([
+                            torchvision.transforms.ToTensor(),
+                            torchvision.transforms.Normalize((0.1307,), (0.3081,))]))
 
-    import torch
-    from torch.utils.data import random_split
-    import torchvision
-
-    """
-
-    :param Params.BatchSize batch_size:
-    :return:
-    """
-
-    MNIST_training = torchvision.datasets.MNIST('.', train=True, download=True,
-                                                transform=torchvision.transforms.Compose([
-                                                    torchvision.transforms.ToTensor(),
-                                                    torchvision.transforms.Normalize((0.1307,), (0.3081,))]))
-
-    MNIST_test_set = torchvision.datasets.MNIST('.', train=False, download=True,
-                                                transform=torchvision.transforms.Compose([
-                                                    torchvision.transforms.ToTensor(),
-                                                    torchvision.transforms.Normalize((0.1307,), (0.3081,))]))
+    test_set = torchvision.datasets.MNIST('.', train=False, download=True,
+                            transform=torchvision.transforms.Compose([
+                            torchvision.transforms.ToTensor(),
+                            torchvision.transforms.Normalize((0.1307,), (0.3081,))]))
 
     # create a training and a validation set
-    MNIST_train_set, MNIST_val_set = random_split(MNIST_training, [55000, 5000])
+    train_set, val_set = random_split(train_set, [55000, 5000])
 
-    train_loader = torch.utils.data.DataLoader(MNIST_train_set, batch_size=batch_size.train, shuffle=True)
-
-    val_loader = torch.utils.data.DataLoader(MNIST_val_set, batch_size=batch_size.val, shuffle= False)
-
-    test_loader = torch.utils.data.DataLoader(MNIST_test_set,
-                                              batch_size=batch_size.test, shuffle= False)
+    train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True)
+    val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=False)
+    test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, shuffle=False)
 
     return train_loader, val_loader, test_loader
 
@@ -116,29 +105,8 @@ def test(net, test_loader, device):
 def main():
     params = Params()
 
-    try:
-        import paramparse
-    except ImportError:
-        print("paramparse is unavailable so commandline arguments will not work")
-    else:
-        paramparse.process(params)
-
-    import torch
-    import torch.optim as optim
-
-    import torch.nn.functional as F
-    import torchvision
-
-    random_seed = 1
-    torch.manual_seed(random_seed)
-
-
     if params.device != 'cpu' and torch.cuda.is_available():
         device = torch.device("cuda")
-        print('Running on GPU: {}'.format(torch.cuda.get_device_name(0)))
-    else:
-        device = torch.device("cpu")
-        print('Running on CPU')
 
     train_loader, val_loader, test_loader = get_dataloaders(params.batch_size)
 
@@ -150,11 +118,11 @@ def main():
         raise AssertionError(f'invalid loss type: {params.loss_type}')
 
 
-    net = FNN(params.loss_type, 10).to(device)
-    optimizer = optim.SGD(net.parameters(), lr=params.learning_rate,
+    net = FCN(params.loss_type, params.n_classes).to(device)
+    optimizer = optim.SGD(net.parameters(), lr=params.lr,
                           momentum=params.momentum)
 
-    print(f'\nusing implementation with {loss_str} loss\n')
+    print(f'\nUsing implementation with {loss_str} loss\n')
 
     start = timeit.default_timer()
 
@@ -178,7 +146,6 @@ def main():
     stop = timeit.default_timer()
 
     runtime = stop - start
-
     print(f'total runtime: {runtime:.2f} secs')
 
 
