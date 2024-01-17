@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 from tqdm import tqdm
 
-#from FCN import FCN
+from FCN import FCN
 
 
 class Params:
