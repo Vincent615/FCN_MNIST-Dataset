@@ -5,24 +5,26 @@ import torch.optim as optim
 import torch.nn.functional as F
 
 from tqdm import tqdm
-import timeit
 
-from FCN import FCN
+#from FCN import FCN
 
 
 class Params:
     def __init__(self):
+        self.n_classes = 10
         self.device = 'gpu'
         self.loss_type = "ce"  # "l2" for L2 loss
-        self.n_classes = 10
+
         self.batch_size = 128
         self.n_epochs = 10
         self.lr = 1e-1
         self.momentum = 0.5
 
+params = Params()
 
-def get_dataloaders(batch_size):
-    train_set = torchvision.datasets.MNIST('.', train=True, download=True,
+
+def get_dataloaders(batch_size=params.batch_size):
+    full_set = torchvision.datasets.MNIST('.', train=True, download=True,
                             transform=torchvision.transforms.Compose([
                             torchvision.transforms.ToTensor(),
                             torchvision.transforms.Normalize((0.1307,), (0.3081,))]))
@@ -33,13 +35,25 @@ def get_dataloaders(batch_size):
                             torchvision.transforms.Normalize((0.1307,), (0.3081,))]))
 
     # create a training and a validation set
-    train_set, val_set = random_split(train_set, [55000, 5000])
+    train_set, val_set = random_split(full_set, [55000, 5000])
 
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True)
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=False)
     test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, shuffle=False)
 
     return train_loader, val_loader, test_loader
+
+
+def get_loss(output, target, loss_type=params.loss_type, n_classes=params.n_classes):
+    if loss_type == 'ce':
+        # compute Cross Entropy Loss. No need to one hot the target
+        loss = F.cross_entropy(output, target)
+    elif loss_type == 'l2':
+        # compute L2 loss
+        target = F.one_hot(target, n_classes).float()
+        loss = F.mse_loss(output, target)
+
+    return loss
 
 
 def train(net, optimizer, train_loader, device):
@@ -51,34 +65,33 @@ def train(net, optimizer, train_loader, device):
         data = data.to(device)
         target = target.to(device)
         output = net(data)
-        loss = net.get_loss(output, target)
+        loss = get_loss(output, target)
         loss.backward()
         optimizer.step()
 
         loss_sc = loss.item()
-
         avg_loss += (loss_sc - avg_loss) / (batch_idx + 1)
 
         pbar.set_description('train loss: {:.6f} avg loss: {:.6f}'.format(loss_sc, avg_loss))
 
 
-def validation(net, validation_loader, device):
+def valid(net, val_loader, device):
     net.eval()
-    validation_loss = 0
+    val_loss = 0
     correct = 0
-    for data, target in validation_loader:
+    for data, target in val_loader:
         data = data.to(device)
         target = target.to(device)
         output = net(data)
-        loss = net.get_loss(output, target)
-        validation_loss += loss.item()
+        loss = get_loss(output, target)
+        val_loss += loss.item()
         pred = output.data.max(1, keepdim=True)[1]
         correct += pred.eq(target.data.view_as(pred)).sum()
 
-    validation_loss /= len(validation_loader.dataset)
+    val_loss /= len(val_loader.dataset)
     print('\nValidation set: Avg. loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)\n'.format(
-        validation_loss, correct, len(validation_loader.dataset),
-        100. * correct / len(validation_loader.dataset)))
+        val_loss, correct, len(val_loader.dataset),
+        100. * correct / len(val_loader.dataset)))
 
 
 def test(net, test_loader, device):
@@ -90,7 +103,7 @@ def test(net, test_loader, device):
         target = target.to(device)
 
         output = net(data)
-        loss = net.get_loss(output, target)
+        loss = get_loss(output, target)
 
         test_loss += loss.item()
         pred = output.data.max(1, keepdim=True)[1]
@@ -103,12 +116,10 @@ def test(net, test_loader, device):
 
 
 def main():
-    params = Params()
-
     if params.device != 'cpu' and torch.cuda.is_available():
         device = torch.device("cuda")
 
-    train_loader, val_loader, test_loader = get_dataloaders(params.batch_size)
+    train_loader, val_loader, test_loader = get_dataloaders()
 
     if params.loss_type == 'l2':
         loss_str = 'L2'
@@ -117,36 +128,21 @@ def main():
     else:
         raise AssertionError(f'invalid loss type: {params.loss_type}')
 
+    print(f'\nUsing implementation with {loss_str} loss:')
 
-    net = FCN(params.loss_type, params.n_classes).to(device)
+    net = FCN(params.n_classes).to(device)
     optimizer = optim.SGD(net.parameters(), lr=params.lr,
                           momentum=params.momentum)
 
-    print(f'\nUsing implementation with {loss_str} loss\n')
-
-    start = timeit.default_timer()
-
-    with torch.no_grad():
-        validation(net, val_loader, device)
     for epoch in range(params.n_epochs):
         print(f'\nepoch {epoch + 1} / {params.n_epochs}\n')
-        train_start = timeit.default_timer()
-
         train(net, optimizer, train_loader, device)
 
-        train_stop = timeit.default_timer()
-        train_runtime = train_stop - train_start
-        print(f'\ntrain runtime: {train_runtime:.2f} secs')
-
         with torch.no_grad():
-            validation(net, val_loader, device)
+            valid(net, val_loader, device)
+
     with torch.no_grad():
         test(net, test_loader, device)
-
-    stop = timeit.default_timer()
-
-    runtime = stop - start
-    print(f'total runtime: {runtime:.2f} secs')
 
 
 if __name__ == "__main__":
