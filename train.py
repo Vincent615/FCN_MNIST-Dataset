@@ -12,7 +12,7 @@ from FCN import FCN
 class Params:
     def __init__(self):
         self.n_classes = 10
-        self.device = 'gpu'
+        self.device = 'cuda'  # "cpu"
         self.loss_type = "ce"  # "l2" for L2 loss
 
         self.batch_size = 128
