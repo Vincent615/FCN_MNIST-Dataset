@@ -4,10 +4,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class FNN(nn.Module):
-    # Fully connected network
+class FCN(nn.Module):
     def __init__(self, loss_type, num_classes):
-        super(FNN, self).__init__()
+        super(FCN, self).__init__()
 
         self.loss_type = loss_type
         self.num_classes = num_classes
@@ -23,15 +22,15 @@ class FNN(nn.Module):
         x = torch.relu(self.fc2(x))
         x = self.fc3(x)
         return F.softmax(x,dim=1)
-
+    
     def get_loss(self, output, target):
-        loss = None
-        # compute Cross Entropy Loss. No need to one hot the target
         if self.loss_type == 'ce':
+            # compute Cross Entropy Loss. No need to one hot the target
             loss = F.cross_entropy(output, target)
-        # compute L2 loss
         elif self.loss_type == 'l2':
-            target = F.one_hot(target,self.num_classes).float()
+            # compute L2 loss
+            target = F.one_hot(target, self.num_classes).float()
             loss = F.mse_loss(output, target)
 
         return loss
+
