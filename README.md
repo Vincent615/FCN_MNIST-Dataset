@@ -6,6 +6,7 @@ train.py is the code to train and test the model.
 ## Prerequisites
 - Pytorch
 - Torchvision
+- tqdm
 - Cuda
 
 ## To-Do
